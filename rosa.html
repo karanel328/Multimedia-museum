@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>Multimedia Museum – Echoes of the Past</title>
+  <meta name="description" content="A simple multimedia landing page with audio, video, and image gallery for a university museum exhibit.">
+  <link rel="stylesheet" href="rosa.css">
+</head>
+<body>
+
+<div class="container">
+  <!-- header -->
+  <div class="hero">
+    <h1> Multimedia University Museum</h1>
+    <p>“Echoes of the Past – A Digital Journey”</p>
+    <div class="badge">✦ exhibit 2026 · sound, video & images ✦</div>
+  </div>
+
+  <!-- background audio card (updated audio track) -->
+  <div class="audio-card">
+    <div class="audio-info">
+      <span>🎵</span>
+      <div>
+        <strong>Ambient Gallery Soundscape</strong><br>
+        <span style="font-size:0.7rem;">serene museum atmosphere · new ambient selection</span>
+      </div>
+    </div>
+    <div style="display: flex; gap: 12px; align-items: center;">
+      <span class="audio-status" id="audioStatus">🔇 Paused</span>
+      <button class="audio-toggle" id="audioToggleBtn">▶ Play Music</button>
+    </div>
+  </div>
+  <div class="video-section">
+    <div class="video-title">📽️ Featured Film: "Living Traditions"</div>
+    <div class="video-container" id="videoContainer">
+      <video id="exhibitVideo" preload="metadata" poster="Multimedia_University_Johor_Campus-750x375.webp">
+        <source src="rv1.mp4" type="video/mp4">
+      </video>
+      <div class="custom-controls">
+        <button id="playPauseBtn" aria-label="Play/Pause">▶</button>
+        <div class="progress-area" id="progressArea">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <span class="time" id="timeDisplay">0:00 / 0:00</span>
+        <input type="range" id="volumeControl" class="volume-range" min="0" max="1" step="0.02" value="0.6">
+        <button id="fullscreenBtn" aria-label="Fullscreen">⛶</button>
+      </div>
+    </div>
+    <div class="fallback-note">
+    Brian Karani- comm00947/m/2023
+    </div>
+  </div>
+
+  <div>
+    <div class="gallery-title"> Gallery · Collection Highlights</div>
+    <div class="gallery-grid" id="galleryGrid"></div>
+  </div>
+
+  <footer>
+    Multimedia University Museum · Nairobi · All media curated for educational experience.
+  </footer>
+</div>
+
+<!-- lightbox modal -->
+<div id="lightboxModal" class="lightbox">
+  <button class="close-lightbox" id="closeLightboxBtn">&times;</button>
+  <img id="lightboxImg" alt="enlarged artifact">
+  <div class="lightbox-caption" id="lightboxCaption"></div>
+</div>
+
+<script>
+  // ---------- DOM elements ----------
+  const video = document.getElementById('exhibitVideo');
+  const playPauseBtn = document.getElementById('playPauseBtn');
+  const progressArea = document.getElementById('progressArea');
+  const progressFill = document.getElementById('progressFill');
+  const timeDisplay = document.getElementById('timeDisplay');
+  const volumeControl = document.getElementById('volumeControl');
+  const fullscreenBtn = document.getElementById('fullscreenBtn');
+  const videoContainer = document.getElementById('videoContainer');
+  
+  // ---------- NEW BACKGROUND AUDIO (changed track) ----------
+  const bgAudio = new Audio();
+  // Using a different free ambient/classical track (SoundHelix Song 3 – calm piano)
+  bgAudio.src = 'somewhere only we know - rhianne (cover).mp3';
+  bgAudio.loop = true;
+  bgAudio.volume = 0.4;
+  
+  const audioToggleBtn = document.getElementById('audioToggleBtn');
+  const audioStatusSpan = document.getElementById('audioStatus');
+  
+  // gallery elements
+  const galleryGrid = document.getElementById('galleryGrid');
+  const lightboxModal = document.getElementById('lightboxModal');
+  const lightboxImg = document.getElementById('lightboxImg');
+  const lightboxCaption = document.getElementById('lightboxCaption');
+  const closeLightboxBtn = document.getElementById('closeLightboxBtn');
+  
+  // ---------- Audio UI helper ----------
+  function updateAudioUI() {
+    if (bgAudio.paused) {
+      audioStatusSpan.innerHTML = '🔇 Paused';
+      audioToggleBtn.innerHTML = '▶ Play Music';
+    } else {
+      audioStatusSpan.innerHTML = '🎵 Playing';
+      audioToggleBtn.innerHTML = '⏸ Pause';
+    }
+  }
+  
+  // toggle background audio (with video priority)
+  function toggleAudio() {
+    if (bgAudio.paused) {
+      // if video is playing, pause video first to avoid conflicts
+      if (!video.paused) {
+        video.pause();
+        updatePlayPauseIcon();
+      }
+      bgAudio.play().catch(err => {
+        console.warn("Audio play blocked, try again after interaction", err);
+        alert("Click again – browser needs a user gesture to play audio.");
+      });
+    } else {
+      bgAudio.pause();
+    }
+    updateAudioUI();
+  }
+  
+  audioToggleBtn.addEventListener('click', toggleAudio);
+  
+  // ---------- Video & Audio Synchronization (pause/resume) ----------
+  let wasAudioPlaying = false;
+  
+  function pauseAudioIfPlaying() {
+    if (!bgAudio.paused) {
+      wasAudioPlaying = true;
+      bgAudio.pause();
+      updateAudioUI();
+    } else {
+      wasAudioPlaying = false;
+    }
+  }
+  
+  function resumeAudioIfNeeded() {
+    if (wasAudioPlaying && bgAudio.paused) {
+      bgAudio.play().catch(e => console.warn(e));
+      updateAudioUI();
+    }
+    wasAudioPlaying = false;
+  }
+  
+  video.addEventListener('play', () => {
+    pauseAudioIfPlaying();
+  });
+  
+  video.addEventListener('pause', () => {
+    resumeAudioIfNeeded();
+  });
+  
+  video.addEventListener('ended', () => {
+    resumeAudioIfNeeded();
+  });
+  
+  // ---------- Custom video controls ----------
+  function formatTime(seconds) {
+    if (isNaN(seconds)) return "0:00";
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  }
+  
+  function updateProgressAndTime() {
+    if (video.duration && !isNaN(video.duration)) {
+      const percent = (video.currentTime / video.duration) * 100;
+      progressFill.style.width = percent + '%';
+      timeDisplay.textContent = `${formatTime(video.currentTime)} / ${formatTime(video.duration)}`;
+    } else {
+      timeDisplay.textContent = `0:00 / 0:00`;
+    }
+  }
+  
+  function updatePlayPauseIcon() {
+    playPauseBtn.textContent = video.paused ? '▶' : '⏸';
+  }
+  
+  video.addEventListener('timeupdate', updateProgressAndTime);
+  video.addEventListener('loadedmetadata', updateProgressAndTime);
+  video.addEventListener('play', updatePlayPauseIcon);
+  video.addEventListener('pause', updatePlayPauseIcon);
+  updatePlayPauseIcon();
+  
+  playPauseBtn.addEventListener('click', () => {
+    if (video.paused) {
+      video.play().catch(e => console.warn(e));
+    } else {
+      video.pause();
+    }
+  });
+  
+  // seek on progress bar
+  progressArea.addEventListener('click', (e) => {
+    const rect = progressArea.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const width = rect.width;
+    const percent = clickX / width;
+    if (video.duration) {
+      video.currentTime = percent * video.duration;
+    }
+  });
+  
+  // volume
+  volumeControl.addEventListener('input', (e) => {
+    video.volume = parseFloat(e.target.value);
+  });
+  video.addEventListener('volumechange', () => {
+    volumeControl.value = video.volume;
+  });
+  volumeControl.value = video.volume;
+  
+  // fullscreen
+  fullscreenBtn.addEventListener('click', () => {
+    if (!document.fullscreenElement) {
+      videoContainer.requestFullscreen().catch(err => console.warn(err));
+    } else {
+      document.exitFullscreen();
+    }
+  });
+  
+  // ---------- UPDATED GALLERY (with your two new images) ----------
+  const galleryData = [
+    { 
+      src: "WhatsApp Image 2026-05-26 at 21.58.05.jpeg", 
+      thumb: "WhatsApp Image 2026-05-26 at 21.58.05.jpeg", 
+      title: "Sensing · Bluetooth · Further Technologies — Innovation showcase" 
+    },
+    { 
+      src: "WhatsApp Image 2026-05-26 at 21.58.06.jpeg", 
+      thumb: "WhatsApp Image 2026-05-26 at 21.58.06.jpeg", 
+      title: "The turntable room at MMU ·  Before Spotify there was this" 
+    },
+    { 
+      src: "WhatsApp Image 2026-05-26 at 21.58.07.jpeg", 
+      thumb: "WhatsApp Image 2026-05-26 at 21.58.07.jpeg", 
+      title: "Before the internet · Vintage typewriters " 
+    },
+    { 
+      src: "WhatsApp Image 2026-05-26 at 21.58.08.jpeg", 
+      thumb: "WhatsApp Image 2026-05-26 at 21.58.08.jpeg", 
+      title: "Step by Step Exchange · Second Industrial Revolution Technologies" 
+    }
+   
+  ];
+  
+  function buildGallery() {
+    galleryGrid.innerHTML = '';
+    galleryData.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'gallery-item';
+      const img = document.createElement('img');
+      img.src = item.thumb;
+      img.alt = item.title;
+      img.loading = 'lazy';
+      const caption = document.createElement('div');
+      caption.className = 'gallery-caption';
+      caption.textContent = item.title;
+      card.appendChild(img);
+      card.appendChild(caption);
+      card.addEventListener('click', () => openLightbox(item.src, item.title));
+      galleryGrid.appendChild(card);
+    });
+  }
+  
+  function openLightbox(imgUrl, titleText) {
+    lightboxImg.src = imgUrl;
+    lightboxCaption.textContent = titleText;
+    lightboxModal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+  
+  function closeLightbox() {
+    lightboxModal.classList.remove('active');
+    document.body.style.overflow = '';
+  }
+  
+  closeLightboxBtn.addEventListener('click', closeLightbox);
+  lightboxModal.addEventListener('click', (e) => {
+    if (e.target === lightboxModal) closeLightbox();
+  });
+  
+  buildGallery();
+  
+  // ---------- Fallback for older browsers ----------
+  bgAudio.addEventListener('error', () => {
+    audioStatusSpan.innerHTML = '⚠️ Audio offline';
+    audioToggleBtn.disabled = true;
+    audioToggleBtn.textContent = 'Unavailable';
+  });
+  
+  updateAudioUI();
+  
+  if (!HTMLVideoElement.prototype.play) {
+    const warn = document.createElement('div');
+    warn.className = 'fallback-note';
+    warn.style.background = '#c9ad7a';
+    warn.innerHTML = '⚠️ Your browser does not fully support HTML5 video. Please update.';
+    document.querySelector('.video-section').appendChild(warn);
+  }
+  
+  video.addEventListener('dblclick', () => {
+    if (video.paused) video.play();
+    else video.pause();
+  });
+</script>
+</body>
+</html>
